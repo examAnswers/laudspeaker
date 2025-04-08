@@ -1,95 +1,30 @@
-services:
-  - type: web
-    name: laudspeaker
-    healthCheckPath: /login
-    env: docker
-    dockerfilePath: ./Dockerfile.laudspeaker
-    dockerContext: .
-    autoDeploy: false
-    disk:
-      name: data
-      mountPath: /data
-    envVars:
-      - fromGroup: laudspeaker
-      - key: PORT
-        value: 80
-      - key: SYNCHRONIZE
-        value: true
-      - key: JWT_KEY
-        generateValue: true
-      - key: JWT_EXPIRES
-        value: 365d
-      - key: CH_MIGRATIONS_HOST
-        fromService:
-          type: pserv
-          name: clickhouse
-          property: host
-      - key: CH_MIGRATIONS_PORT
-        value: 8123
-      - key: CH_MIGRATIONS_USER
-        value: default
-      - key: CH_MIGRATIONS_PASSWORD
-        value:
-      - key: CH_MIGRATIONS_DB
-        value: default
-      - key: CH_MIGRATIONS_HOME
-        value: packages/server/src/migrations/clickhouse
-      - key: MONGOOSE_URL
-        fromService:
-          type: pserv
-          name: mongo
-          property: hostport
-      - key: CLICKHOUSE_HOST
-        fromService:
-          type: pserv
-          name: clickhouse
-          property: hostport
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: laudspeaker
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: laudspeaker
-          property: port
-      - key: DATABASE_USER
-        fromDatabase:
-          name: laudspeaker-db
-          property: user
-      - key: DATABASE_PASSWORD
-        fromDatabase:
-          name: laudspeaker-db
-          property: password
-      - key: DATABASE_HOST
-        fromDatabase:
-          name: laudspeaker-db
-          property: host
-      - key: DATABASE_NAME
-        fromDatabase:
-          name: laudspeaker-db
-          property: database
-  - type: redis
-    name: laudspeaker
-    ipAllowList:
-      - source: 0.0.0.0/0
-        description: everywhere
-  - type: pserv
-    name: clickhouse
-    env: docker
-    dockerfilePath: ./Dockerfile.clickhouse
-    disk:
-      name: data
-      mountPath: /var/lib/clickhouse
-      sizeGB: 10
-  - type: pserv
-    name: mongo
-    env: docker
-    dockerfilePath: ./Dockerfile.mongo
-    disk:
-      name: data
-      mountPath: /data/db
-      sizeGB: 10
-databases:
-  - name: laudspeaker-db
+   services:
+     - type: web
+       name: laudspeaker-backend
+       env: node
+       buildCommand: npm install && npm run build
+       startCommand: npm start
+       envVars:
+         - key: NODE_ENV
+           value: production
+         - key: DATABASE_URL
+           fromDatabase:
+             name: laudspeaker-db
+             property: connectionString
+       plan: free
+
+     - type: web
+       name: laudspeaker-frontend
+       env: node
+       buildCommand: npm install && npm run build
+       startCommand: npm start
+       envVars:
+         - key: REACT_APP_API_URL
+           value: https://laudspeaker-backend.onrender.com
+       plan: free
+
+     - type: database
+       name: laudspeaker-db
+       databaseName: laudspeaker
+       user: laudspeaker
+       plan: free
